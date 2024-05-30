@@ -6,12 +6,12 @@
 #    By: mbankhar <mbankhar@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/03/08 14:39:30 by mbankhar          #+#    #+#              #
-#    Updated: 2024/05/21 15:34:33 by mbankhar         ###   ########.fr        #
+#    Updated: 2024/05/29 13:01:21 by mbankhar         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 
-CFLAGS = -Wall -Wextra -Werror
+# CFLAGS = -Wall -Wextra -Werror
 
 SRCS = philo.c pars_and_error.c philo_utils.c
 
