@@ -6,14 +6,14 @@
 #    By: mbankhar <mbankhar@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/03/08 14:39:30 by mbankhar          #+#    #+#              #
-#    Updated: 2024/05/29 13:01:21 by mbankhar         ###   ########.fr        #
+#    Updated: 2024/06/05 19:13:16 by mbankhar         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 
-# CFLAGS = -Wall -Wextra -Werror
+CFLAGS = -g -Wall -Wextra -Werror
 
-SRCS = philo.c pars_and_error.c philo_utils.c
+SRCS = philo.c pars_and_error.c philo_utils.c init.c routines.c
 
 OBJS = $(SRCS:.c=.o)
 
@@ -24,7 +24,7 @@ HEADER = philo.h
 all: $(NAME)
 
 $(NAME): $(OBJS) $(HEADER)
-	cc $(CFLAGS) -I$(HEADER) $(OBJS) -o $@
+	cc $(CFLAGS) -I$(HEADER) $(OBJS) -o $@ -pthread
 	
 clean:
 	rm -f $(OBJS)
