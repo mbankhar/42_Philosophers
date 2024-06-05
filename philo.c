@@ -6,56 +6,23 @@
 /*   By: mbankhar <mbankhar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/18 14:45:00 by mbankhar          #+#    #+#             */
-/*   Updated: 2024/06/02 18:18:35 by mbankhar         ###   ########.fr       */
+/*   Updated: 2024/06/05 16:06:07 by mbankhar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "philo.h"
 
-u_int64_t	get_time(void)
+void	locked_print(char *str, long long int time, int id, t_philosopher *philosopher, t_diner *diner)
 {
-	struct timeval	tv;
-
-	if (gettimeofday(&tv, NULL))
-		return (0);
-	return ((tv.tv_sec * (u_int64_t)(1000)) + (tv.tv_usec / 1000));
-}
-
-void	usleep_busy_wait(useconds_t usec)
-{
-	struct timeval	start;
-	struct timeval	end;
-	long long		time;
-
-	gettimeofday(&start, NULL);
-
-	while ((end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec
-			- start.tv_usec) < usec);
-}
-
-int	 ft_usleep(unsigned int time, t_philosopher *philosopher, t_diner *diner)
-{
-	long int		start;
-
-	start = get_time();
-	while (get_time() - start < time)
+	pthread_mutex_lock(&diner->write_lock);
+	if (diner->someone_died == 1)
 	{
-		usleep(100);
-		pthread_mutex_lock(&diner->meal_lock);
-			time = get_time() - philosopher->last_meal;
-			pthread_mutex_unlock(&diner->meal_lock);
-			if (time >= diner->time_to_die)
-			{
-				time = get_time() - philosopher->start_time;
-				pthread_mutex_lock(&diner->write_lock);
-				printf("FUKTHISSHIT%u %d died\n", time, philosopher->id);
-				pthread_mutex_unlock(&diner->write_lock);
-				exit(1);
-			}
-	return (0);
+		pthread_mutex_unlock(&diner->write_lock);	
+		return ;
 	}
+	printf("%llu %d %s\n", time, id, str);
+	pthread_mutex_unlock(&diner->write_lock);
 }
-
 
 void	init_threads(t_diner *diner, t_philosopher *philosopher)
 {
@@ -71,7 +38,7 @@ void	init_threads(t_diner *diner, t_philosopher *philosopher)
 		philosopher[i].forks = fork_phil;
 	i = -1;
 	pthread_mutex_init(&diner->start_mutex, NULL);
-	diner->created_threads = 0;
+	// diner->created_threads = 0;
 	while (diner->philo_nbr > ++i)
 	{
 		(philosopher[i]).philo = &thread[i];
@@ -84,27 +51,6 @@ void	init_threads(t_diner *diner, t_philosopher *philosopher)
 	pthread_mutex_destroy(&diner->start_mutex);
 }
 
-void	init_philos(t_diner *diner, t_philosopher *philosopher)
-{
-	int	i;
-
-	i = -1;
-	while (++i < diner->philo_nbr)
-	{
-		philosopher[i].id = i + 1;
-		philosopher[i].last_meal = 0;
-		philosopher[i].is_dead = 0;
-		philosopher[i].number_of_meals = 0;
-		philosopher[i].diner = diner;
-		philosopher[i].start_time = get_time();
-		philosopher[i].last_meal = get_time();
-		philosopher[i].write_lock = diner->write_lock;
-		philosopher[i].dead_lock = diner->dead_lock;
-		philosopher[i].meal_lock = diner->meal_lock;
-	}
-}
-
-
 void	eating(t_philosopher *philosopher, t_diner *diner)
 {
 	int			left_fork;
@@ -113,28 +59,25 @@ void	eating(t_philosopher *philosopher, t_diner *diner)
 
 	left_fork = philosopher->id - 1;
 	right_fork = philosopher->id % diner->philo_nbr;
-	if (philosopher->id % 2 == 0)
-	{
-		pthread_mutex_lock(&philosopher->forks[left_fork]);
-		pthread_mutex_lock(&philosopher->forks[right_fork]);
-	}
-	else
-	{
-		pthread_mutex_lock(&philosopher->forks[right_fork]);
-		pthread_mutex_lock(&philosopher->forks[left_fork]);
-	}
-	// pthread_mutex_lock(&philosopher->forks[left_fork]);
-	// pthread_mutex_lock(&philosopher->forks[right_fork]);
-	pthread_mutex_lock(&diner->write_lock);
+	if (diner->someone_died == 1)
+		return ;
+	pthread_mutex_lock(&philosopher->forks[left_fork]);
+	pthread_mutex_lock(&philosopher->forks[right_fork]);
+	// pthread_mutex_lock(&philosopher->meal_lock);
 	time = get_time() - philosopher->start_time;
-	printf("%llu %d has taken a fork\n", time, philosopher->id);
-	printf("%llu %d has taken a fork\n", time, philosopher->id);
-	printf("%llu %d is eating\n", time, philosopher->id);
-	pthread_mutex_unlock(&diner->write_lock);
-	// usleep_busy_wait(diner->time_to_eat, philosopher, diner);
-	ft_usleep(diner->time_to_eat, philosopher, diner);
-	pthread_mutex_lock(&philosopher->meal_lock);
+	// pthread_mutex_unlock(&philosopher->meal_lock);
+	if (diner->someone_died == 1)
+	{
+		pthread_mutex_unlock(&philosopher->forks[right_fork]);
+		pthread_mutex_unlock(&philosopher->forks[left_fork]);
+		return ;
+	}
+	locked_print("has taken a fork", time, philosopher->id, philosopher, diner);
+	locked_print("has taken a fork", time, philosopher->id, philosopher, diner);
+	locked_print("is eating", time, philosopher->id, philosopher, diner);
+	ft_usleep(diner->time_to_eat / 1000);
 	philosopher->last_meal = get_time();
+	pthread_mutex_lock(&philosopher->meal_lock);
 	philosopher->number_of_meals++;
 	pthread_mutex_unlock(&philosopher->meal_lock);
 	pthread_mutex_unlock(&philosopher->forks[right_fork]);
@@ -145,22 +88,25 @@ void	sleeping(t_philosopher *philosopher, t_diner *diner)
 {
 	u_int64_t	time;
 
-	pthread_mutex_lock(&diner->write_lock);
+	// pthread_mutex_lock(&philosopher->meal_lock);
 	time = get_time() - philosopher->start_time;
-	printf("%llu %d is sleeping\n", time, philosopher->id);
-	pthread_mutex_unlock(&diner->write_lock);
-	// usleep_busy_wait(diner->time_to_sleep, philosopher, diner);
-	ft_usleep(diner->time_to_sleep, philosopher, diner);
+	// pthread_mutex_unlock(&philosopher->meal_lock);
+	if (diner->someone_died == 1)
+		return ;
+	locked_print("is sleeping", time, philosopher->id, philosopher, diner);
+	ft_usleep(diner->time_to_sleep / 1000);
 }
 
 void	thinking(t_philosopher *philosopher, t_diner *diner)
 {
 	u_int64_t	time;
 
-	pthread_mutex_lock(&diner->write_lock);
+	// pthread_mutex_lock(&philosopher->meal_lock);
 	time = get_time() - philosopher->start_time;
-	printf("%llu %d is thinking\n", time, philosopher->id);
-	pthread_mutex_unlock(&diner->write_lock);
+	// pthread_mutex_unlock(&philosopher->meal_lock);
+	if (diner->someone_died == 1)
+		return ;
+	locked_print("is thinking", time, philosopher->id, philosopher, diner);
 }
 
 void	*routine(void *data)
@@ -171,16 +117,26 @@ void	*routine(void *data)
 	philosopher = (t_philosopher *)data;
 	diner = philosopher->diner;
 	if (philosopher->id % 2 != 0)
-		usleep_busy_wait(diner->time_to_eat / 2);
+		ft_usleep((diner->time_to_eat / 2) / 1000);
 	while (42)
 	{
-		eating(philosopher, diner);
-		if (philosopher->number_of_meals == diner->nbr_of_cycles)
+		if (diner->philo_nbr == 1)
+		{
+			usleep(diner->time_to_die);
 			break ;
+		}
+		if (diner->someone_died == 1)
+			break ;
+		eating(philosopher, diner);
+		// pthread_mutex_lock(&diner->meal_lock);
+		if (philosopher->number_of_meals == diner->nbr_of_cycles)
+		{
+			// pthread_mutex_unlock(&diner->meal_lock);
+			break ;
+		}
+		// pthread_mutex_unlock(&diner->meal_lock);
 		sleeping(philosopher, diner);
 		thinking(philosopher, diner);
-		if (philosopher->number_of_meals == diner->nbr_of_cycles)
-			break ;
 	}
 	return (NULL);
 }
@@ -194,6 +150,7 @@ void	*checkfordead(void *data)
 	long long		time;
 	t_philosopher	*philosopher;
 	t_diner			*diner;
+	int				checker;
 
 	i = 1;
 	philosopher = (t_philosopher *)data;
@@ -203,21 +160,36 @@ void	*checkfordead(void *data)
 		i = -1;
 		while (++i < diner->philo_nbr)
 		{
-			pthread_mutex_lock(&diner->meal_lock);
+			// pthread_mutex_lock(&diner->meal_lock);
 			time = get_time() - philosopher[i].last_meal;
-			pthread_mutex_unlock(&diner->meal_lock);
+			// pthread_mutex_unlock(&diner->meal_lock);
 			if (time >= diner->time_to_die)
 			{
+				// pthread_mutex_lock(&diner->meal_lock);
 				time = get_time() - philosopher[i].start_time;
+				// pthread_mutex_unlock(&diner->meal_lock);
+				diner->someone_died = 1;
 				pthread_mutex_lock(&diner->write_lock);
-				printf("%llu %d died\n", time, philosopher[i].id);
+				printf("%llu %d %s\n", time, philosopher[i].id, "died");
 				pthread_mutex_unlock(&diner->write_lock);
-				while (++i < diner->philo_nbr)
-					pthread_mutex_unlock(&philosopher->forks[i]);
-				exit(1);
+				i = -1;
+				while (diner->philo_nbr > ++i)
+					pthread_join(*philosopher[i].philo, NULL);
 				return (NULL);
 			}
 		}
+		i = -1;
+		checker = 0;
+		while (++i < diner->philo_nbr)
+		{
+			// pthread_mutex_lock(&diner->meal_lock);
+			if (philosopher[i].number_of_meals == diner->nbr_of_cycles)
+				checker += 1;
+			// pthread_mutex_unlock(&diner->meal_lock);
+		}
+		if (checker == diner->philo_nbr)
+			break ;
+		usleep(1000);
 	}
 	return (NULL);
 }
@@ -243,11 +215,11 @@ int	main(int argc, char **argv)
 	check_args(argc, argv, &diner);
 	philosopher->diner = &diner;
 	pthread_mutex_init(&diner.write_lock, NULL);
-	pthread_mutex_init(&diner.dead_lock, NULL);
+	// pthread_mutex_init(&diner.dead_lock, NULL);
 	pthread_mutex_init(&diner.meal_lock, NULL);
 	init_philos(&diner, philosopher);
 	init_threads(&diner, philosopher);
-	pthread_mutex_destroy(&diner.dead_lock);
+	// pthread_mutex_destroy(&diner.dead_lock);
 	pthread_mutex_destroy(&diner.meal_lock);
 	pthread_mutex_destroy(&diner.write_lock);
 }
