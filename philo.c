@@ -6,7 +6,7 @@
 /*   By: mbankhar <mbankhar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/18 14:45:00 by mbankhar          #+#    #+#             */
-/*   Updated: 2024/06/05 16:06:07 by mbankhar         ###   ########.fr       */
+/*   Updated: 2024/06/05 16:17:44 by mbankhar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,8 +37,6 @@ void	init_threads(t_diner *diner, t_philosopher *philosopher)
 	while (++i < diner->philo_nbr)
 		philosopher[i].forks = fork_phil;
 	i = -1;
-	pthread_mutex_init(&diner->start_mutex, NULL);
-	// diner->created_threads = 0;
 	while (diner->philo_nbr > ++i)
 	{
 		(philosopher[i]).philo = &thread[i];
@@ -48,7 +46,6 @@ void	init_threads(t_diner *diner, t_philosopher *philosopher)
 	i = -1;
 	while (diner->philo_nbr > ++i)
 		pthread_join(*philosopher[i].philo, NULL);
-	pthread_mutex_destroy(&diner->start_mutex);
 }
 
 void	eating(t_philosopher *philosopher, t_diner *diner)
@@ -63,9 +60,7 @@ void	eating(t_philosopher *philosopher, t_diner *diner)
 		return ;
 	pthread_mutex_lock(&philosopher->forks[left_fork]);
 	pthread_mutex_lock(&philosopher->forks[right_fork]);
-	// pthread_mutex_lock(&philosopher->meal_lock);
 	time = get_time() - philosopher->start_time;
-	// pthread_mutex_unlock(&philosopher->meal_lock);
 	if (diner->someone_died == 1)
 	{
 		pthread_mutex_unlock(&philosopher->forks[right_fork]);
@@ -77,9 +72,9 @@ void	eating(t_philosopher *philosopher, t_diner *diner)
 	locked_print("is eating", time, philosopher->id, philosopher, diner);
 	ft_usleep(diner->time_to_eat / 1000);
 	philosopher->last_meal = get_time();
-	pthread_mutex_lock(&philosopher->meal_lock);
+	pthread_mutex_lock(&diner->meal_lock);
 	philosopher->number_of_meals++;
-	pthread_mutex_unlock(&philosopher->meal_lock);
+	pthread_mutex_unlock(&diner->meal_lock);
 	pthread_mutex_unlock(&philosopher->forks[right_fork]);
 	pthread_mutex_unlock(&philosopher->forks[left_fork]);
 }
@@ -88,9 +83,7 @@ void	sleeping(t_philosopher *philosopher, t_diner *diner)
 {
 	u_int64_t	time;
 
-	// pthread_mutex_lock(&philosopher->meal_lock);
 	time = get_time() - philosopher->start_time;
-	// pthread_mutex_unlock(&philosopher->meal_lock);
 	if (diner->someone_died == 1)
 		return ;
 	locked_print("is sleeping", time, philosopher->id, philosopher, diner);
@@ -101,9 +94,7 @@ void	thinking(t_philosopher *philosopher, t_diner *diner)
 {
 	u_int64_t	time;
 
-	// pthread_mutex_lock(&philosopher->meal_lock);
 	time = get_time() - philosopher->start_time;
-	// pthread_mutex_unlock(&philosopher->meal_lock);
 	if (diner->someone_died == 1)
 		return ;
 	locked_print("is thinking", time, philosopher->id, philosopher, diner);
@@ -128,13 +119,8 @@ void	*routine(void *data)
 		if (diner->someone_died == 1)
 			break ;
 		eating(philosopher, diner);
-		// pthread_mutex_lock(&diner->meal_lock);
 		if (philosopher->number_of_meals == diner->nbr_of_cycles)
-		{
-			// pthread_mutex_unlock(&diner->meal_lock);
 			break ;
-		}
-		// pthread_mutex_unlock(&diner->meal_lock);
 		sleeping(philosopher, diner);
 		thinking(philosopher, diner);
 	}
@@ -160,14 +146,10 @@ void	*checkfordead(void *data)
 		i = -1;
 		while (++i < diner->philo_nbr)
 		{
-			// pthread_mutex_lock(&diner->meal_lock);
 			time = get_time() - philosopher[i].last_meal;
-			// pthread_mutex_unlock(&diner->meal_lock);
 			if (time >= diner->time_to_die)
 			{
-				// pthread_mutex_lock(&diner->meal_lock);
 				time = get_time() - philosopher[i].start_time;
-				// pthread_mutex_unlock(&diner->meal_lock);
 				diner->someone_died = 1;
 				pthread_mutex_lock(&diner->write_lock);
 				printf("%llu %d %s\n", time, philosopher[i].id, "died");
@@ -182,10 +164,8 @@ void	*checkfordead(void *data)
 		checker = 0;
 		while (++i < diner->philo_nbr)
 		{
-			// pthread_mutex_lock(&diner->meal_lock);
 			if (philosopher[i].number_of_meals == diner->nbr_of_cycles)
 				checker += 1;
-			// pthread_mutex_unlock(&diner->meal_lock);
 		}
 		if (checker == diner->philo_nbr)
 			break ;
@@ -215,11 +195,9 @@ int	main(int argc, char **argv)
 	check_args(argc, argv, &diner);
 	philosopher->diner = &diner;
 	pthread_mutex_init(&diner.write_lock, NULL);
-	// pthread_mutex_init(&diner.dead_lock, NULL);
 	pthread_mutex_init(&diner.meal_lock, NULL);
 	init_philos(&diner, philosopher);
 	init_threads(&diner, philosopher);
-	// pthread_mutex_destroy(&diner.dead_lock);
 	pthread_mutex_destroy(&diner.meal_lock);
 	pthread_mutex_destroy(&diner.write_lock);
 }
