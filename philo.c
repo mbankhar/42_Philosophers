@@ -6,7 +6,7 @@
 /*   By: mbankhar <mbankhar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/18 14:45:00 by mbankhar          #+#    #+#             */
-/*   Updated: 2024/06/05 19:16:55 by mbankhar         ###   ########.fr       */
+/*   Updated: 2024/06/06 15:38:36 by mbankhar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@ int	check_for_eating(t_diner *diner, t_philosopher *philosopher)
 	while (++i < diner->philo_nbr)
 	{
 		pthread_mutex_lock(&diner->meal_lock);
-		if (philosopher[i].number_of_meals == diner->nbr_of_cycles)
+		if (philosopher[i].number_of_meals >= diner->nbr_of_cycles)
 			checker += 1;
 		pthread_mutex_unlock(&diner->meal_lock);
 	}
