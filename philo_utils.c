@@ -6,7 +6,7 @@
 /*   By: mbankhar <mbankhar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/21 15:20:39 by mbankhar          #+#    #+#             */
-/*   Updated: 2024/06/05 18:46:49 by mbankhar         ###   ########.fr       */
+/*   Updated: 2024/06/06 18:59:21 by mbankhar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,11 +40,21 @@ int	ft_usleep(unsigned int time_in_microseconds)
 void	locked_print(char *str, long long int time, int id, t_diner *diner)
 {
 	pthread_mutex_lock(&diner->write_lock);
+	pthread_mutex_lock(&diner->dead_lock);
 	if (diner->someone_died == 1)
 	{
 		pthread_mutex_unlock(&diner->write_lock);
+		pthread_mutex_unlock(&diner->dead_lock);
 		return ;
 	}
+	pthread_mutex_unlock(&diner->dead_lock);
+	printf("%llu %d %s\n", time, id, str);
+	pthread_mutex_unlock(&diner->write_lock);
+}
+
+void	locked_pr(char *str, long long int time, int id, t_diner *diner)
+{
+	pthread_mutex_lock(&diner->write_lock);
 	printf("%llu %d %s\n", time, id, str);
 	pthread_mutex_unlock(&diner->write_lock);
 }

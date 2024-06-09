@@ -6,7 +6,7 @@
 /*   By: mbankhar <mbankhar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/18 14:45:10 by mbankhar          #+#    #+#             */
-/*   Updated: 2024/06/06 15:14:05 by mbankhar         ###   ########.fr       */
+/*   Updated: 2024/06/08 17:47:07 by mbankhar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,8 +52,10 @@ typedef struct s_diner
 	int				time_to_eat;
 	int				time_to_sleep;
 	int				nbr_of_cycles;
+	int				meals;
 	pthread_mutex_t	meal_lock;
 	pthread_mutex_t	write_lock;
+	pthread_mutex_t	dead_lock;
 	t_philosopher	*philo;
 }		t_diner;
 
@@ -72,5 +74,9 @@ void		thinking(t_philosopher *philosopher, t_diner *diner);
 void		monitor_thread(t_philosopher *philosopher);
 void		*routine(void *data);
 void		locked_print(char *str, long long int time, int id, t_diner *diner);
+void		locked_pr(char *str, long long int time, int id, t_diner *diner);
+void		eat_for(int right_fork, int left_fork, t_philosopher *philosopher);
+int			one_philo(t_diner *diner, t_philosopher *philosopher);
+void		do_shit2(t_diner *diner);
 
 #endif
